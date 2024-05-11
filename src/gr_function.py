@@ -1,10 +1,7 @@
-import gradio as gr
-import string
-import random
 import os
 from PIL import Image
 import json
-import base64
+from utils import parse_json
 
 
 def split_dataset(split):
@@ -52,3 +49,29 @@ def get_enhance_dataset(dataset_path, dataset_name, dataset_split, top_k):
         text = item["caption"]
         df.append([index, text])
     return df
+
+
+def fill_case_data(test_case):
+    case_data = parse_json(f"data/embedding/{test_case}.json")
+    image_path = os.path.join("data/image/webqa", f'{case_data["image_id"]:012d}.jpg')
+    image_obj = Image.open(image_path)
+    text_obj = case_data["caption"]
+    return [image_obj, text_obj]
+
+
+def get_vision_embedding(vision_embedding_model, image_input, test_case):
+    case_data = parse_json(f"data/embedding/{test_case}.json")
+    ret_df = []
+    for model in vision_embedding_model:
+        vector = case_data["vision_embedding_model"][model]
+        ret_df.append([model, vector])
+    return ret_df
+
+
+def get_text_embedding(text_embedding_model, text_input, test_case):
+    case_data = parse_json(f"data/embedding/{test_case}.json")
+    ret_df = []
+    for model in text_embedding_model:
+        vector = case_data["text_embedding_model"][model]
+        ret_df.append([model, vector])
+    return ret_df

@@ -1,6 +1,5 @@
 import gradio as gr
 import gr_function
-import gr_interface
 from utils import load_yaml
 
 
@@ -39,18 +38,18 @@ def data_enhance():
                     gallery = gr.Gallery(
                         label="检索结果",
                         columns=5,
-                        height=225,
+                        height=220,
                     )
                 with gr.Row():
                     with gr.Column(scale=50):
                         dataset_df_1 = gr.Dataframe(
                             label="原始数据",
-                            headers=["id", "文本"],
+                            headers=["id", "原始文本"],
                         )
                     with gr.Column(scale=50):
                         dataset_df_2 = gr.Dataframe(
                             label="增强数据",
-                            headers=["id", "文本"],
+                            headers=["id", "增强文本"],
                         )
             inputs = [dataset_path, dataset_name, dataset_split, top_k]
             btn_0.click(
@@ -71,53 +70,64 @@ def data_enhance():
     return demo
 
 
-def extract_caption_gr():
+def vector_embedding():
+    def clear_df():
+        return [[]]
+
+    embedding_config = load_yaml("config/embedding.yaml")
     with gr.Blocks() as demo:
-        # header_gr()
         with gr.Row():
             with gr.Column(scale=1):
-                img = gr.Image(type="pil")
-
-                model_name = gr.Dropdown(
-                    label="模型选择",
-                    choices=[
-                        "llava-v1.6-34b",
-                        "llava-v1.6-mistral-7b",
-                        "llava-v1.6-vicuna-7b",
-                        "llava-v1.6-vicuna-13b",
-                    ],
-                    elem_id=3,
+                vision_embedding_model = gr.CheckboxGroup(
+                    choices=embedding_config["vision_embedding_model"],
+                    label="图像嵌入编码模型",
+                    value=[embedding_config["vision_embedding_model"][0]],
                 )
-
-                max_token = gr.Slider(
-                    minimum=128,
-                    maximum=512,
-                    step=10,
-                    value=256,
-                    label="最大生成长度",
-                    elem_id=2,
+                text_embedding_model = gr.CheckboxGroup(
+                    choices=embedding_config["text_embedding_model"],
+                    label="文本嵌入编码模型",
+                    value=[embedding_config["text_embedding_model"][0]],
                 )
-
-                list_num = gr.Slider(
-                    minimum=1,
-                    maximum=10,
-                    step=1,
-                    value=5,
-                    label="生成数量",
+                test_case = gr.Dropdown(
+                    choices=["case_1", "case_2", "case_3"],
+                    label="测试用例",
                 )
-
-                gr.ClearButton(img)
-                btn = gr.Button("上传图片")
-
+                btn_0 = gr.Button("计算图像编码")
+                btn_1 = gr.Button("计算文本编码")
             with gr.Column(scale=100):
-                output_df = gr.Dataframe(
-                    label="生成结果",
-                    headers=["模型名称", "生成结果"],
-                )
-
-        inputs = [model_name, img, max_token, list_num]
-        btn.click(fn=gr_function.gen_df, inputs=inputs, outputs=output_df)
-
+                with gr.Row():
+                    with gr.Column(scale=30):
+                        image_input = gr.Image(label="图像输入")
+                    with gr.Column(scale=70):
+                        image_embedding_df = gr.Dataframe(
+                            headers=["嵌入编码模型", "向量表示"],
+                        )
+                with gr.Row():
+                    with gr.Column(scale=30):
+                        text_input = gr.Textbox(label="文本输入")
+                    with gr.Column(scale=70):
+                        text_embedding_df = gr.Dataframe(
+                            headers=["嵌入编码模型", "向量表示"],
+                        )
+        test_case.change(
+            fn=gr_function.fill_case_data,
+            inputs=[test_case],
+            outputs=[image_input, text_input],
+        )
+        test_case.change(fn=clear_df, inputs=None, outputs=[image_embedding_df])
+        test_case.change(fn=clear_df, inputs=None, outputs=[text_embedding_df])
+        inputs_0 = [vision_embedding_model, image_input, test_case]
+        inputs_1 = [text_embedding_model, text_input, test_case]
+        btn_0.click(
+            fn=gr_function.get_vision_embedding,
+            inputs=inputs_0,
+            outputs=image_embedding_df,
+        )
+        btn_1.click(
+            fn=gr_function.get_text_embedding,
+            inputs=inputs_1,
+            outputs=text_embedding_df,
+        )
     return demo
 
 
