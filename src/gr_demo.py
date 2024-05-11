@@ -1,5 +1,6 @@
 import gradio as gr
 import gr_function
+import gr_interface
 from utils import load_yaml
 
 
@@ -11,18 +12,17 @@ def data_enhance():
                 dataset_path = gr.Dropdown(
                     choices=[dataset_config["dataset_path"]],
                     label="数据集路径",
+                    value=dataset_config["dataset_path"],
                 )
                 dataset_name = gr.Dropdown(
-                    choices=[item["name"] for item in dataset_config["dataset_name"]],
-                    value=[item["file"] for item in dataset_config["dataset_name"]],
+                    choices=dataset_config["dataset_name"],
+                    value=dataset_config["dataset_name"][0],
                     label="数据集名称",
-                    allow_custom_value=True,
                 )
                 dataset_split = gr.Dropdown(
                     choices=dataset_config["dataset_split"],
-                    value=[0, 1, 2],
+                    value=dataset_config["dataset_split"][0],
                     label="数据集划分",
-                    allow_custom_value=True,
                 )
                 top_k = gr.Slider(
                     minimum=1,
@@ -31,19 +31,33 @@ def data_enhance():
                     value=5,
                     label="展示数量",
                 )
-                btn_1 = gr.Button("数据加载")
-                btn_2 = gr.Button("数据增强")
-            with gr.Column(scale=50):
-                dataset_df_1 = gr.Dataframe(
-                    label="原始数据",
-                    headers=["图像", "文本"],
-                )
-            with gr.Column(scale=50):
-                dataset_df_2 = gr.Dataframe(
-                    label="增强数据",
-                    headers=["图像", "文本"],
-                )
+                btn_0 = gr.Button("图像加载")
+                btn_1 = gr.Button("文本加载")
+                btn_2 = gr.Button("文本增强")
+            with gr.Column(scale=100):
+                with gr.Row():
+                    gallery = gr.Gallery(
+                        label="检索结果",
+                        columns=5,
+                        height=225,
+                    )
+                with gr.Row():
+                    with gr.Column(scale=50):
+                        dataset_df_1 = gr.Dataframe(
+                            label="原始数据",
+                            headers=["id", "文本"],
+                        )
+                    with gr.Column(scale=50):
+                        dataset_df_2 = gr.Dataframe(
+                            label="增强数据",
+                            headers=["id", "文本"],
+                        )
             inputs = [dataset_path, dataset_name, dataset_split, top_k]
+            btn_0.click(
+                fn=gr_function.get_dataset_image,
+                inputs=inputs,
+                outputs=gallery,
+            )
             btn_1.click(
                 fn=gr_function.get_origin_dataset,
                 inputs=inputs,

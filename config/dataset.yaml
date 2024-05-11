@@ -1,13 +1,9 @@
-dataset_path: /data/dataset/
+dataset_path: data/dataset/
 dataset_name:
-  - name: ImageNet
-    file: imagenet.json
-  - name: Mini-ImageNet
-    file: mini_imagenet.json
-  - name: WebQA
-    file: webqa.json
-  - name: ClueWeb
-    file: clueweb.json
+  - imagenet
+  - mini_imagenet
+  - webqa
+  - clueweb
 dataset_split:
   - train
   - val
