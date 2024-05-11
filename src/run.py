@@ -6,8 +6,8 @@ import argparse
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--ip", default="127.0.0.1", type=str)
-    parser.add_argument("--port", default=65002, type=int)
-    parser.add_argument("--queue", default=False, type=bool)
+    parser.add_argument("--port", default=65001, type=int)
+    parser.add_argument("--queue", default=True, type=bool)
     args = parser.parse_args()
 
     demo = create_tabbed_interface()

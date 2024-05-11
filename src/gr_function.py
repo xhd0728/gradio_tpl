@@ -3,6 +3,7 @@ import string
 import random
 import os
 from PIL import Image
+import json
 
 
 def upload_func(img, label):
@@ -28,3 +29,35 @@ def get_test_gallery(*args, **kwargs):
     img_list = os.listdir(default_img_folder)
     ret_list = [Image.open(os.path.join(default_img_folder, img)) for img in img_list]
     return ret_list
+
+
+def get_origin_dataset(dataset_path, dataset_name, dataset_split, top_k):
+    with open(os.path.join(dataset_path, dataset_name), "r", encoding="utf-8") as f:
+        data = json.load(f)[dataset_split * 10 : (dataset_split + 1) * 10]
+    df = []
+    for item in data[: top_k - 1]:
+        image_path = os.path.join(
+            "data/image",
+            dataset_name.split(".")[0],
+            f"{item['image_id']:012d}.jpg",
+        )
+        image_obj = Image.open(image_path)
+        text = item["old_caption"]
+        df.append([image_obj, text])
+    return df
+
+
+def get_enhance_dataset(dataset_path, dataset_name, dataset_split, top_k):
+    with open(os.path.join(dataset_path, dataset_name), "r", encoding="utf-8") as f:
+        data = json.load(f)[dataset_split * 10 : (dataset_split + 1) * 10]
+    df = []
+    for item in data[: top_k - 1]:
+        image_path = os.path.join(
+            "data/image",
+            dataset_name.split(".")[0],
+            f"{item['image_id']:012d}.jpg",
+        )
+        image_obj = Image.open(image_path)
+        text = item["caption"]
+        df.append([image_obj, text])
+    return df

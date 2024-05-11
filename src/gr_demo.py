@@ -1,109 +1,29 @@
 import gradio as gr
-from gr_header import header_gr
-from gr_function import upload_func, gen_df, get_test_gallery
+import gr_function
+from utils import load_yaml
 
 
-def text2image_gr():
-
+def data_enhance():
+    dataset_config = load_yaml("config/dataset.yaml")
     with gr.Blocks() as demo:
-        # header_gr()
-        with gr.Row():
-            with gr.Column(scale=1):
-                query_text = gr.Textbox(
-                    value="a yellow dog", label="检索文本", elem_id=0, interactive=True
-                )
-
-                model_name = gr.Dropdown(
-                    label="模型选择",
-                    choices=[
-                        "clip-vit-base-patch16",
-                        "clip-vit-base-patch32",
-                        "clip-vit-large-patch14",
-                        "chinese-clip-vit-base-patch16",
-                        "chinese-clip-vit-large-patch14-336px",
-                    ],
-                    elem_id=3,
-                )
-
-                topk = gr.Slider(
-                    minimum=1, maximum=20, step=1, value=10, label="top_k", elem_id=2
-                )
-
-                btn1 = gr.Button("检索")
-
-            with gr.Column(scale=100):
-                out1 = gr.Gallery(label="检索结果", columns=5)
-
-        inputs = [query_text, topk, model_name]
-
-        examples = [
-            ["a yellow dog", 10, "clip-vit-base-patch32"],
-            ["many apples", 10, "clip-vit-large-patch14"],
-        ]
-
-        gr.Examples(examples, inputs=inputs)
-
-        btn1.click(fn=get_test_gallery, inputs=inputs, outputs=out1)
-
-    return demo
-
-
-def upload2db_gr():
-    with gr.Blocks() as demo:
-        # header_gr()
-        with gr.Row():
-            with gr.Column(scale=1):
-                img_input = gr.Image(type="pil")
-                label_input = gr.Textbox(label="文本描述")
-
-                gr.ClearButton(img_input)
-                btn = gr.Button("上传图文信息")
-
-            with gr.Column(scale=100):
-                img_show = gr.Gallery(
-                    label="上传图片预览",
-                    columns=5,
-                    height=256,
-                )
-                doc_df = gr.Dataframe(
-                    label="关联文档",
-                    headers=["id", "length", "context"],
-                )
-
-        btn.click(
-            fn=upload_func,
-            inputs=[img_input, label_input],
-            outputs=[img_show, doc_df],
-        )
-    return demo
-
-
-def show_dataset_gr():
-    with gr.Blocks() as demo:
-        # header_gr()
         with gr.Row():
             with gr.Column(scale=1):
                 dataset_path = gr.Dropdown(
-                    choices=["config/dataset"], label="数据集配置文件路径"
+                    choices=[dataset_config["dataset_path"]],
+                    label="数据集路径",
                 )
-
                 dataset_name = gr.Dropdown(
-                    choices=[
-                        "coco2014.json",
-                        "coco2017.json",
-                        "flickr30k.json",
-                        "mini-imagenet.json",
-                        "coco-cn.json",
-                        "flickr30k-cn.json",
-                    ],
-                    label="数据集配置文件名称",
+                    choices=[item["name"] for item in dataset_config["dataset_name"]],
+                    value=[item["file"] for item in dataset_config["dataset_name"]],
+                    label="数据集名称",
+                    allow_custom_value=True,
                 )
-
-                is_train = gr.Dropdown(
-                    choices=["train", "test", "val"],
+                dataset_split = gr.Dropdown(
+                    choices=dataset_config["dataset_split"],
+                    value=[0, 1, 2],
                     label="数据集划分",
+                    allow_custom_value=True,
                 )
-
                 top_k = gr.Slider(
                     minimum=1,
                     maximum=10,
@@ -111,15 +31,29 @@ def show_dataset_gr():
                     value=5,
                     label="展示数量",
                 )
-
-                btn = gr.Button("加载")
-
-            with gr.Column(scale=100):
-                img_out = gr.Gallery(label="数据集预览:", columns=5)
-
-            inputs = [dataset_path, dataset_name, is_train, top_k]
-            btn.click(fn=None, inputs=inputs, outputs=img_out)
-
+                btn_1 = gr.Button("数据加载")
+                btn_2 = gr.Button("数据增强")
+            with gr.Column(scale=50):
+                dataset_df_1 = gr.Dataframe(
+                    label="原始数据",
+                    headers=["图像", "文本"],
+                )
+            with gr.Column(scale=50):
+                dataset_df_2 = gr.Dataframe(
+                    label="增强数据",
+                    headers=["图像", "文本"],
+                )
+            inputs = [dataset_path, dataset_name, dataset_split, top_k]
+            btn_1.click(
+                fn=gr_function.get_origin_dataset,
+                inputs=inputs,
+                outputs=dataset_df_1,
+            )
+            btn_2.click(
+                fn=gr_function.get_enhance_dataset,
+                inputs=inputs,
+                outputs=dataset_df_2,
+            )
     return demo
 
 
@@ -168,7 +102,7 @@ def extract_caption_gr():
                 )
 
         inputs = [model_name, img, max_token, list_num]
-        btn.click(fn=gen_df, inputs=inputs, outputs=output_df)
+        btn.click(fn=gr_function.gen_df, inputs=inputs, outputs=output_df)
 
     return demo
 
