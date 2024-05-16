@@ -23,6 +23,11 @@ def data_enhance():
                     value=dataset_config["dataset_split"][0],
                     label="数据集划分",
                 )
+                caption_extract_model = gr.Dropdown(
+                    choices=dataset_config["caption_extract_model"],
+                    value=dataset_config["caption_extract_model"][0],
+                    label="图像描述提取模型",
+                )
                 top_k = gr.Slider(
                     minimum=1,
                     maximum=10,
@@ -44,14 +49,20 @@ def data_enhance():
                     with gr.Column(scale=50):
                         dataset_df_1 = gr.Dataframe(
                             label="原始数据",
-                            headers=["id", "字符数量", "原始文本"],
+                            headers=["id", "token数量", "原始文本"],
                         )
                     with gr.Column(scale=50):
                         dataset_df_2 = gr.Dataframe(
                             label="增强数据",
-                            headers=["id", "字符数量", "增强文本"],
+                            headers=["id", "token数量", "增强文本"],
                         )
-            inputs = [dataset_path, dataset_name, dataset_split, top_k]
+            inputs = [
+                dataset_path,
+                dataset_name,
+                dataset_split,
+                caption_extract_model,
+                top_k,
+            ]
             btn_0.click(
                 fn=gr_function.get_dataset_image,
                 inputs=inputs,
@@ -152,110 +163,95 @@ def vector_embedding():
 
 
 def retrieval():
+    retrieval_config = load_yaml("config/retrieval.yaml")
     with gr.Blocks() as demo:
         with gr.Row():
             with gr.Column(scale=1):
-                dataset_name = gr.Dropdown(
-                    choices=["webqa"],
-                    value="webqa",
-                    label="数据集名称",
-                )
                 vision_embedding_model = gr.Dropdown(
-                    choices=["vit-base-patch16-224"],
-                    value="vit-base-patch16-224",
+                    choices=retrieval_config["vision_embedding_model"],
+                    value=retrieval_config["vision_embedding_model"][0],
                     label="图像嵌入编码模型",
                 )
                 text_embedding_model = gr.Dropdown(
-                    choices=["bge-base-en-v1.5"],
-                    value="bge-base-en-v1.5",
+                    choices=retrieval_config["text_embedding_model"],
+                    value=retrieval_config["text_embedding_model"][0],
                     label="文本嵌入编码模型",
                 )
                 top_k1 = gr.Slider(
-                    minimum=30,
-                    maximum=150,
-                    step=5,
-                    value=50,
-                    label="top_k1",
+                    minimum=0,
+                    maximum=1,
+                    step=0.01,
+                    value=0.4,
+                    label="top_k1 (一阶段检索阈值)",
                 )
                 top_k2 = gr.Slider(
                     minimum=1,
                     maximum=10,
                     step=1,
-                    value=1,
-                    label="top_k2",
+                    value=5,
+                    label="top_k2 (二阶段检索数量)",
                 )
-                btn_1 = gr.Button("一阶段检索 (粗排)")
-                btn_2 = gr.Button("二阶段检索 (精排)")
-                btn_3 = gr.Button("计算检索指标")
+                test_case = gr.Dropdown(
+                    choices=["case_1"],
+                    label="测试用例",
+                )
+                btn_0 = gr.Button("加载测试用例")
+                btn_1 = gr.Button("执行两阶段检索")
+                btn_2 = gr.Button("计算检索指标")
             with gr.Column(scale=100):
                 with gr.Row():
-                    with gr.Column(scale=70):
-                        with gr.Row():
-                            with gr.Column(scale=1):
-                                test_case = gr.Dropdown(
-                                    choices=["case_1"],
-                                    label="测试用例",
-                                )
-                            with gr.Column(scale=1):
-                                query_text = gr.Textbox(label="图像描述")
-                        with gr.Row():
-                            with gr.Column(scale=100):
-                                query_df = gr.Dataframe(
-                                    headers=["id", "score", "文本"],
-                                    label="检索结果",
-                                )
-                    with gr.Column(scale=30):
+                    with gr.Column(scale=1):
                         query_image = gr.Image(label="图像输入")
+                    with gr.Column(scale=1):
+                        query_text = gr.Textbox(label="图像描述")
+                    with gr.Column(scale=100):
+                        query_df = gr.Dataframe(
+                            headers=["编码模型", "编码方式", "向量表示"],
+                            label="编码信息",
+                        )
                 with gr.Row():
-                    with gr.Column(scale=50):
+                    with gr.Column(scale=30):
                         retrieval_1_df = gr.Dataframe(
-                            headers=["id", "score", "文本"],
+                            headers=["召回分数阈值", "召回数量"],
                             label="一阶段检索结果",
                         )
-                    with gr.Column(scale=50):
-                        retrieval_2_df = gr.Dataframe(
-                            headers=["id", "score", "文本"],
-                            label="二阶段检索结果",
-                        )
-                with gr.Row():
-                    with gr.Column(scale=100):
+                    with gr.Column(scale=70):
                         metric_df = gr.Dataframe(
                             headers=[
-                                "重排序模型",
-                                "Recall@100",
-                                "MRR@10",
-                                "NDCG@10",
+                                "Recall@top_k2",
+                                "MRR@top_k2",
+                                "NDCG@top_k2",
                             ],
                             label="检索指标",
                         )
-        inputs_1 = [
-            dataset_name,
-            vision_embedding_model,
-            text_embedding_model,
-            top_k1,
-            test_case,
-        ]
-        inputs_2 = [
-            dataset_name,
-            vision_embedding_model,
-            text_embedding_model,
-            top_k2,
-            test_case,
-        ]
-        inputs_3 = [
-            dataset_name,
-            vision_embedding_model,
-            text_embedding_model,
-            test_case,
-        ]
-        inputs_4 = [
-            query_image,
-            query_text,
-            vision_embedding_model,
-            text_embedding_model,
-            test_case,
-        ]
-        btn_1.click(fn=None, inputs=inputs_1, outputs=retrieval_1_df)
-        btn_2.click(fn=None, inputs=inputs_2, outputs=retrieval_2_df)
-        btn_3.click(fn=None, inputs=inputs_3, outputs=metric_df)
+                with gr.Row():
+                    with gr.Column(scale=100):
+                        retrieval_2_df = gr.Dataframe(
+                            headers=["文档编号", "相关性分数", "文档内容"],
+                            label="二阶段检索结果",
+                        )
+        inputs_0 = [vision_embedding_model, text_embedding_model, test_case]
+        inputs_1 = [top_k1, top_k2, test_case]
+        inputs_2 = [top_k1, top_k2, test_case]
+
+        test_case.change(
+            fn=gr_function.fill_query_input,
+            inputs=inputs_0,
+            outputs=[query_image, query_text, query_df],
+        )
+        btn_0.click(
+            fn=gr_function.fill_query_input,
+            inputs=inputs_0,
+            outputs=[query_image, query_text, query_df],
+        )
+        btn_1.click(
+            fn=gr_function.retrieval,
+            inputs=inputs_1,
+            outputs=[retrieval_1_df, retrieval_2_df],
+        )
+        btn_2.click(
+            fn=gr_function.cal_metrics,
+            inputs=inputs_2,
+            outputs=metric_df,
+        )
     return demo

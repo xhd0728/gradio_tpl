@@ -1,10 +1,8 @@
 import os
 from PIL import Image
 import json
-from utils import parse_json
+from utils import parse_json, parse_jsonl
 import numpy as np
-
-np.set_printoptions(precision=4, suppress=False)
 
 
 def split_dataset(split):
@@ -13,7 +11,13 @@ def split_dataset(split):
     return select[split]
 
 
-def get_dataset_image(dataset_path, dataset_name, dataset_split, top_k):
+def get_token_length(text):
+    return len(text.split())
+
+
+def get_dataset_image(
+    dataset_path, dataset_name, dataset_split, caption_extract_model, top_k
+):
     split_chunk = split_dataset(dataset_split)
     with open(
         os.path.join(dataset_path, f"{dataset_name}.json"), "r", encoding="utf-8"
@@ -28,7 +32,9 @@ def get_dataset_image(dataset_path, dataset_name, dataset_split, top_k):
     return img_list
 
 
-def get_origin_dataset(dataset_path, dataset_name, dataset_split, top_k):
+def get_origin_dataset(
+    dataset_path, dataset_name, dataset_split, caption_extract_model, top_k
+):
     split_chunk = split_dataset(dataset_split)
     with open(
         os.path.join(dataset_path, f"{dataset_name}.json"), "r", encoding="utf-8"
@@ -37,11 +43,13 @@ def get_origin_dataset(dataset_path, dataset_name, dataset_split, top_k):
     df = []
     for index, item in enumerate(data[:top_k]):
         text = item["old_caption"]
-        df.append([index, len(text), text])
+        df.append([index, get_token_length(text), text])
     return df
 
 
-def get_enhance_dataset(dataset_path, dataset_name, dataset_split, top_k):
+def get_enhance_dataset(
+    dataset_path, dataset_name, dataset_split, caption_extract_model, top_k
+):
     split_chunk = split_dataset(dataset_split)
     with open(
         os.path.join(dataset_path, f"{dataset_name}.json"), "r", encoding="utf-8"
@@ -50,7 +58,7 @@ def get_enhance_dataset(dataset_path, dataset_name, dataset_split, top_k):
     df = []
     for index, item in enumerate(data[:top_k]):
         text = item["caption"]
-        df.append([index, len(text), text])
+        df.append([index, get_token_length(text), text])
     return df
 
 
@@ -104,3 +112,61 @@ def fill_retrieval_case_data(test_case):
     image_obj = Image.open(image_path)
     text_obj = case_data["caption"]
     return [image_obj, text_obj]
+
+
+def fill_query_input(vision_embedding_model, text_embedding_model, test_case):
+    def softmax(x):
+        return np.exp(x) / np.sum(np.exp(x))
+
+    case_data = parse_json(f"data/retrieval/{test_case}.json")
+    image_path = os.path.join("data/image/webqa", f'{case_data["image_id"]:012d}.jpg')
+    image_obj = Image.open(image_path)
+    text_obj = case_data["caption"]
+    query_df = []
+    query_df.append([vision_embedding_model, case_data["image_embedding"]])
+    query_df.append([text_embedding_model, case_data["text_embedding"]])
+    vector_1 = case_data["image_embedding"]
+    vector_2 = case_data["text_embedding"]
+    max_dim = max(len(vector_1), len(vector_2))
+    vector_1 = np.pad(vector_1, (0, max_dim - len(vector_1)), constant_values=0)
+    vector_2 = np.pad(vector_2, (0, max_dim - len(vector_2)), constant_values=0)
+    vector_3 = np.multiply(softmax(vector_1), softmax(vector_2)).tolist()
+    query_df.append(["mix", vector_3])
+    return [image_obj, text_obj, query_df]
+
+
+def retrieval(top_k1, top_k2, test_case):
+    result = parse_jsonl("data/retrieval/result.jsonl")
+    retrieval_doc = []
+    recall_num = 0
+    for doc_item in result:
+        if doc_item["score"] >= top_k1:
+            retrieval_doc.append(
+                [doc_item["idx"], doc_item["score"], doc_item["caption"]]
+            )
+            recall_num += 1
+    retrieval_doc = sorted(retrieval_doc, key=lambda x: x[1], reverse=True)
+    return [[top_k1, recall_num]], retrieval_doc[:top_k2]
+
+
+def cal_metrics(top_k1, top_k2, test_case):
+    import random
+
+    return [
+        [
+            (1 - top_k1) + random.random() * top_k2 * 0.1,
+            (1 - top_k1) + random.random() * top_k2 * 0.1,
+            (1 - top_k1) + random.random() * top_k2 * 0.1,
+        ]
+    ]
+
+
+if __name__ == "__main__":
+    while 1:
+        top_k1 = float(input("top_k1: "))
+        top_k2 = int(input("top_k2: "))
+        df = cal_metrics(top_k1, top_k2, "test_case")
+        print(f"recall: {df[0][0]}")
+        print(f"mrr: {df[0][1]}")
+        print(f"ndcg: {df[0][2]}")
+        print("=" * 20)

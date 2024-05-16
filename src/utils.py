@@ -3,13 +3,13 @@ import yaml
 
 
 def parse_json(json_path):
-    with open(json_path, "r") as f:
+    with open(json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
     return data
 
 
 def parse_jsonl(jsonl_path):
-    with open(jsonl_path, "r") as f:
+    with open(jsonl_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
     data = [json.loads(line) for line in lines]
     return data

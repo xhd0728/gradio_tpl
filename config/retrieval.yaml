@@ -1,0 +1,4 @@
+text_embedding_model:
+  - bge-base-en-v1.5
+vision_embedding_model:
+  - vit-base-patch16-224

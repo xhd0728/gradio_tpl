@@ -8,3 +8,8 @@ dataset_split:
   - train
   - val
   - test
+caption_extract_model:
+  - llava-v1.6-34b
+  - llava-v1.6-mixtral-7b
+  - llava-v1.6-mixtral-13b
+  - llava-v1.6-vicuna-7b
